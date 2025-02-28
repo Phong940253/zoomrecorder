@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 echo 'Entrypoint is executing'
 cleanup () {
     kill -s SIGTERM $!
