@@ -11,3 +11,7 @@ pyvirtualcam
 openai
 pydub
 python-dotenv
+fastapi
+gunicorn
+uvicorn
+python-multipart
