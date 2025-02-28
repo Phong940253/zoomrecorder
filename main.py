@@ -5,8 +5,6 @@ import time
 from pydantic import BaseModel
 import socket
 import traceback
-
-from zoomrec import record_meeting, transcribe_meeting
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -60,42 +58,21 @@ def check_port_in_use(port):
         return True
     else:
         return False
+app = FastAPI()
+
+class ZoomMeeting(BaseModel):
+    meeting_link: str
+    id: str
+    passcode: str
+    name: str
+    description: str
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.post("/join-meeting")
-def join_meeting_endpoint(zoom_meeting: ZoomMeeting):
-    try:
-        print(f"Joining bot to {zoom_meeting.meeting_link}")
-
-        # Extract meeting details from the link
-        meeting_link = zoom_meeting.meeting_link
-        id = zoom_meeting.id
-        passcode = zoom_meeting.passcode
-        name = zoom_meeting.name
-        # for name file save
-        description = zoom_meeting.description
-
-
-        if meetting_link:
-            zoom = subprocess.Popen(f'zoom --url="{url}"', stdout=subprocess.DEVNULL, stderr = subprocess.DEVNULL,
-                                    shell=True, preexec_fn=os.setsid)
-        else:
-            zoom = subprocess.Popen(f'zoom --url="zoommtg://zoom.us/join?confno={id}&pwd={passcode}"', stdout=subprocess.DEVNULL, stderr = subprocess.DEVNULL,
-                                    shell=True, preexec_fn=os.setsid)
-        
-        print("bot name: ", name)
-        
-
-        # Call the record_meeting function with the extracted arguments
-        audio_name = record_meeting(name, description)
-
-        if audio_name != 0:
-            return {"message": "Meeting started and recording."}
-        else:
-            return {"message": "Error starting the meeting."}
-    except Exception as e:
-        print(traceback.format_exc())
-        return {"message": str(e)}
+def join_meeting(zoom_meeting: ZoomMeeting):
+    command = f"python3 zoomrec.py -u '{zoom_meeting.meeting_link}' -n '{zoom_meeting.name}' -d '{zoom_meeting.description}' -i '{zoom_meeting.id}' -p '{zoom_meeting.passcode}'"
+    process = subprocess.Popen(command, shell=True)
+    return {"message": "Meeting started"}
