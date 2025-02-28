@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 echo 'Entrypoint is executing'
 cleanup () {
     kill -s SIGTERM $!
@@ -52,7 +52,7 @@ pactl load-module module-remap-source master=microphone.monitor source_name=micr
 pactl set-source-volume 3 0%
 
 echo -e "\nStart script.."
-sleep 5
+# sleep 5
 
 while getopts ":u:n:d:i:p:" flag; do
     case "${flag}" in

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # Disable screensaver and power management
 xset -dpms &
