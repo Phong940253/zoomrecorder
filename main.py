@@ -4,11 +4,20 @@ import os
 import time
 from pydantic import BaseModel
 import socket
+import traceback
+
+from zoomrec import record_meeting, transcribe_meeting
+from concurrent.futures import ThreadPoolExecutor
+
 
 app = FastAPI()
 
 class ZoomMeeting(BaseModel):
     meeting_link: str
+    id: str
+    passcode: str
+    name: str
+    description: str
 
 def check_new_txt_file(directory, known_files):
     while True:
@@ -57,24 +66,36 @@ async def root():
     return {"message": "Hello World"}
 
 @app.post("/join-meeting")
-def join_meeting(zoom_meeting: ZoomMeeting):
-    port = find_open_port(5901)
-    print(f"Joinding bot to {zoom_meeting.meeting_link}")
-    print(f"First open port is {port}")
-    command = f"sudo docker run -it \
-    -v $(pwd)/recordings:/home/zoomrec/recordings \
-    -v $(pwd)/logs:/home/zoomrec/logs:rw \
-    -p {port}:5901 \
-    --security-opt seccomp:unconfined \
-    zoomrec:v0.1.0 \
-    -u '{zoom_meeting.meeting_link}' \
-    -n 'CoPitch AI' \
-    -d ''"
-    # Here you would typically use something like the subprocess module to execute the command
+def join_meeting_endpoint(zoom_meeting: ZoomMeeting):
+    try:
+        print(f"Joining bot to {zoom_meeting.meeting_link}")
 
-    # run the command
-    process = subprocess.Popen(command, shell=True)
-    process.wait()
-    print("joined successfully")
+        # Extract meeting details from the link
+        meeting_link = zoom_meeting.meeting_link
+        id = zoom_meeting.id
+        passcode = zoom_meeting.passcode
+        name = zoom_meeting.name
+        # for name file save
+        description = zoom_meeting.description
 
-    return True
+
+        if meetting_link:
+            zoom = subprocess.Popen(f'zoom --url="{url}"', stdout=subprocess.DEVNULL, stderr = subprocess.DEVNULL,
+                                    shell=True, preexec_fn=os.setsid)
+        else:
+            zoom = subprocess.Popen(f'zoom --url="zoommtg://zoom.us/join?confno={id}&pwd={passcode}"', stdout=subprocess.DEVNULL, stderr = subprocess.DEVNULL,
+                                    shell=True, preexec_fn=os.setsid)
+        
+        print("bot name: ", name)
+        
+
+        # Call the record_meeting function with the extracted arguments
+        audio_name = record_meeting(name, description)
+
+        if audio_name != 0:
+            return {"message": "Meeting started and recording."}
+        else:
+            return {"message": "Error starting the meeting."}
+    except Exception as e:
+        print(traceback.format_exc())
+        return {"message": str(e)}
