@@ -6,16 +6,18 @@ from pydantic import BaseModel
 import socket
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-
+from typing import Optional
 
 app = FastAPI()
 
+zoom_process = None
+
 class ZoomMeeting(BaseModel):
-    meeting_link: str
-    id: str
-    passcode: str
-    name: str
-    description: str
+    meeting_link: Optional[str] = None
+    id: Optional[str] = None
+    passcode: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 def check_new_txt_file(directory, known_files):
     while True:
@@ -58,21 +60,45 @@ def check_port_in_use(port):
         return True
     else:
         return False
-app = FastAPI()
-
-class ZoomMeeting(BaseModel):
-    meeting_link: str
-    id: str
-    passcode: str
-    name: str
-    description: str
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.post("/join-meeting")
-def join_meeting(zoom_meeting: ZoomMeeting):
-    command = f"python3 zoomrec.py -u '{zoom_meeting.meeting_link}' -n '{zoom_meeting.name}' -d '{zoom_meeting.description}' -i '{zoom_meeting.id}' -p '{zoom_meeting.passcode}'"
-    process = subprocess.Popen(command, shell=True)
-    return {"message": "Meeting started"}
+def join_meeting(zoom_meeting: ZoomMeeting):  # FastAPI automatically treats Pydantic models as request bodies
+    global zoom_process
+    if zoom_process is None or zoom_process.poll() is not None:
+        command = (
+            f"python3 zoomrec.py -u '{zoom_meeting.meeting_link}' "
+            f"-n '{zoom_meeting.name}' "
+            f"-d '{zoom_meeting.description}' "
+            f"-i '{zoom_meeting.id}' "
+            f"-p '{zoom_meeting.passcode}'"
+        )
+        zoom_process = subprocess.Popen(command, shell=True)
+        return {"message": "Meeting started", "pid": zoom_process.pid}
+    else:
+        return {"message": "Meeting is already in progress"}
+
+@app.post("/terminate-recording")
+def terminate_recording():
+    global zoom_process
+    if zoom_process:
+        zoom_process.terminate()
+        zoom_process = None
+        return {"message": "Recording terminated"}
+    else:
+        return {"message": "No recording in progress"}
+
+@app.get("/check-meeting-status")
+async def check_meeting_status():
+    global zoom_process
+    if zoom_process:
+        if zoom_process.poll() is None:
+            return {"message": "Meeting is still in progress"}
+        else:
+            zoom_process = None
+            return {"message": "Meeting has ended"}
+    else:
+        return {"message": "No recording in progress"}
