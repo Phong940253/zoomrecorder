@@ -123,6 +123,8 @@ ADD res/xfce.sh ${START_DIR}/xfce.sh
 ADD .env ${HOME}/
 ADD zoomrec.py ${HOME}/
 ADD res/img ${HOME}/img
+# Add main script
+ADD main.py ${HOME}/
 
 # Set permissions
 USER 0
@@ -133,4 +135,6 @@ RUN chmod a+x ${START_DIR}/entrypoint.sh && \
 
 EXPOSE ${VNC_PORT} 8000
 USER zoomrec
+
+# debug entrypoint file is existing using ls command
 ENTRYPOINT ["/start/entrypoint.sh"]
