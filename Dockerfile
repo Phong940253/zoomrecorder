@@ -34,13 +34,13 @@ RUN apt-get update && \
         bzip2 \
         gnome-screenshot \
         tzdata && \
-# Generate locales for en_US.UTF-8
+    # Generate locales for en_US.UTF-8
     locale-gen en_US.UTF-8 && \
-# Install tigervnc
+    # Install tigervnc
     wget -q -O tigervnc-1.10.0.x86_64.tar.gz https://sourceforge.net/projects/tigervnc/files/stable/1.10.0/tigervnc-1.10.0.x86_64.tar.gz && \
     tar xz -f tigervnc-1.10.0.x86_64.tar.gz --strip 1 -C / && \
     rm -rf tigervnc-1.10.0.x86_64.tar.gz && \
-# Install xfce ui
+    # Install xfce ui
     apt-get install --no-install-recommends -y \
         supervisor \
         xfce4 \
@@ -48,11 +48,11 @@ RUN apt-get update && \
         xfce4-pulseaudio-plugin \
         xfce4-terminal \
         xubuntu-icon-theme && \
-# Install pulseaudio
+    # Install pulseaudio
     apt-get install --no-install-recommends -y \
         pulseaudio \
         pavucontrol && \
-# Install necessary packages
+    # Install necessary packages
     apt-get install --no-install-recommends -y \
         ibus \
         dbus-user-session \
@@ -62,7 +62,7 @@ RUN apt-get update && \
         xauth \
         x11-xserver-utils \
         libxkbcommon-x11-0 && \
-# Install Zoom dependencies
+    # Install Zoom dependencies
     apt-get install --no-install-recommends -y \
         libxcb-xinerama0 \
         libglib2.0-0 \
@@ -83,15 +83,15 @@ RUN apt-get update && \
         libsqlite3-0 \
         libxcb-keysyms1 \
         libxcb-xtest0 && \
-# Install Zoom
+    # Install Zoom
     wget -q -O zoom_amd64.deb https://zoom.us/client/latest/zoom_amd64.deb && \
     apt install -f -y ./zoom_amd64.deb && \
     rm -rf zoom_amd64.deb && \
-# Install FFmpeg
+    # Install FFmpeg
     apt-get install --no-install-recommends -y \
         ffmpeg \
         libavcodec-extra && \
-# Install Python dependencies for script
+    # Install Python dependencies for script
     apt-get install --no-install-recommends -y \
         python3 \
         python3-pip \
@@ -100,7 +100,7 @@ RUN apt-get update && \
         python3-setuptools \
         scrot && \
     pip3 install --upgrade --no-cache-dir -r ${HOME}/res/requirements.txt && \
-# Clean up
+    # Clean up
     apt-get autoremove --purge -y && \
     apt-get autoclean -y && \
     apt-get clean -y && \
@@ -129,8 +129,8 @@ USER 0
 RUN chmod a+x ${START_DIR}/entrypoint.sh && \
     chmod -R a+rw ${START_DIR} && \
     chown -R zoomrec:zoomrec ${HOME} && \
-    find ${HOME}/ -name '*.sh' -exec chmod -v a+x {} + 
+    find ${HOME}/ -name '*.sh' -exec chmod -v a+x {} +
 
-EXPOSE ${VNC_PORT}
+EXPOSE ${VNC_PORT} 8000
 USER zoomrec
 ENTRYPOINT ["/start/entrypoint.sh"]
