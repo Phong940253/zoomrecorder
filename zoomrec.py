@@ -28,7 +28,11 @@ def join_meeting(name):
 
     while True:
         try: 
-            pyautogui.locateCenterOnScreen("./img/name_field_check.png", confidence= 0.8)
+            x, y = pyautogui.locateCenterOnScreen("./img/name_field_check.png", confidence= 0.8)
+            print("Name Field Found")
+            print(x, y)
+            # click on the name field
+            pyautogui.click(x, y)
             time.sleep(random.uniform(1,2))
             pyautogui.write(name, interval=0.5)
 
@@ -37,26 +41,42 @@ def join_meeting(name):
             pyautogui.click(x, y)
             break
         except Exception as e:
+            print("Name Field Not Found")
             if check_invalid_meeting():
                 print("Invalid Meeting Link Provided")
                 return 0
             else:
                 time.sleep(0.1)
-    print("Joined. Waiting to be admitted")
 
     while True:
         try:
-            x, y = pyautogui.locateCenterOnScreen("./img/join_with_computer_audio.png", confidence= 0.8)
+            # x, y = pyautogui.locateCenterOnScreen("./img/join_with_computer_audio.png", confidence= 0.8)
+            x, y = pyautogui.locateCenterOnScreen("./img/confirm-join.png", confidence= 0.8)
+            # print("Join with Computer Audio Found")
             time.sleep(random.uniform(1,2))
             pyautogui.click(x, y)
             break
         except Exception as e:
-            try:
-                x, y = pyautogui.locateCenterOnScreen("./img/join_audio.png", confidence= 0.8)
-                time.sleep(random.uniform(1,2))
-                pyautogui.click(x, y)
-            except:
-                time.sleep(0.1)
+            time.sleep(0.1)
+            
+    while True:
+        try:
+            x, y = pyautogui.locateCenterOnScreen("./img/confirm-join.png", confidence= 0.8)
+            time.sleep(random.uniform(1,2))
+            pyautogui.click(x, y)
+            break
+        except Exception as e:
+            time.sleep(0.1)
+    print("Joined. Waiting to be admitted")
+    
+    while True:
+        try:
+            x, y = pyautogui.locateCenterOnScreen("./img/leave.png", confidence= 0.8)
+            print("Admitted")
+            break
+        except Exception as e:
+            time.sleep(1)
+            
     print("Joined the meeting, Recording now...")
 
     return True
