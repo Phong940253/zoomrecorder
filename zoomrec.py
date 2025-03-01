@@ -27,55 +27,37 @@ def join_meeting(name):
     import pyautogui
 
     while True:
-        try: 
-            x, y = pyautogui.locateCenterOnScreen("./img/name_field_check.png", confidence= 0.8)
-            print("Name Field Found")
-            print(x, y)
-            # click on the name field
-            pyautogui.click(x, y)
-            time.sleep(random.uniform(1,2))
-            pyautogui.write(name, interval=0.5)
-
-            x, y = pyautogui.locateCenterOnScreen("./img/join.png", confidence= 0.8)
-            time.sleep(random.uniform(1,2))
-            pyautogui.click(x, y)
-            break
-        except Exception as e:
-            print("Name Field Not Found")
-            if check_invalid_meeting():
-                print("Invalid Meeting Link Provided")
-                return 0
-            else:
-                time.sleep(0.1)
-
-    while True:
         try:
-            # x, y = pyautogui.locateCenterOnScreen("./img/join_with_computer_audio.png", confidence= 0.8)
-            x, y = pyautogui.locateCenterOnScreen("./img/confirm-join.png", confidence= 0.8)
-            # print("Join with Computer Audio Found")
-            time.sleep(random.uniform(1,2))
-            pyautogui.click(x, y)
-            break
-        except Exception as e:
-            time.sleep(0.1)
-            
-    while True:
-        try:
-            x, y = pyautogui.locateCenterOnScreen("./img/confirm-join.png", confidence= 0.8)
-            time.sleep(random.uniform(1,2))
-            pyautogui.click(x, y)
-            break
-        except Exception as e:
-            time.sleep(0.1)
-    print("Joined. Waiting to be admitted")
-    
-    while True:
-        try:
+            # check if the user has been admitted
             x, y = pyautogui.locateCenterOnScreen("./img/leave.png", confidence= 0.8)
             print("Admitted")
             break
         except Exception as e:
-            time.sleep(1)
+            # if exit join button, then click on it
+            try:
+                x, y = pyautogui.locateCenterOnScreen("./img/join.png", confidence= 0.8)
+                time.sleep(random.uniform(1,2))
+                pyautogui.click(x, y)
+            except Exception as e:
+                # check if has enter name field
+                try: 
+                    x, y = pyautogui.locateCenterOnScreen("./img/name_field_check.png", confidence= 0.8)
+                    # click on the name field
+                    pyautogui.click(x, y)
+                    time.sleep(random.uniform(1,2))
+                    pyautogui.write(name, interval=0.2)
+
+                    x, y = pyautogui.locateCenterOnScreen("./img/join.png", confidence= 0.8)
+                    time.sleep(random.uniform(1,2))
+                    pyautogui.click(x, y)
+                except Exception as e:
+                    if check_invalid_meeting():
+                        print("Invalid Meeting Link Provided")
+                        return 0
+                    else:
+                        pass
+            
+            time.sleep(0.3)
             
     print("Joined the meeting, Recording now...")
 

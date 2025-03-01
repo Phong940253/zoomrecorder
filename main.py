@@ -7,6 +7,8 @@ import socket
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
+import psutil
+import signal
 
 app = FastAPI()
 
@@ -81,10 +83,23 @@ def join_meeting(zoom_meeting: ZoomMeeting):  # FastAPI automatically treats Pyd
     else:
         return {"message": "Meeting is already in progress"}
 
+def kill_child_processes(parent_pid, sig=signal.SIGTERM):
+    try:
+        parent = psutil.Process(parent_pid)
+    except psutil.NoSuchProcess:
+        return
+    children = parent.children(recursive=True)
+    for process in children:
+        try:
+            process.send_signal(sig)
+        except psutil.NoSuchProcess:
+            pass
+
 @app.post("/terminate-recording")
 def terminate_recording():
     global zoom_process
     if zoom_process:
+        kill_child_processes(zoom_process.pid)
         zoom_process.terminate()
         zoom_process = None
         return {"message": "Recording terminated"}
