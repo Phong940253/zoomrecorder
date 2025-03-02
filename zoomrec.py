@@ -6,8 +6,11 @@ from openai import OpenAI
 from pydub import AudioSegment
 from dotenv import load_dotenv
 import os
-import time
 from concurrent.futures import ThreadPoolExecutor
+import pyautogui
+from loguru import logger
+import sys
+import argparse
 
 load_dotenv()
 
@@ -15,55 +18,94 @@ client = OpenAI(
   api_key=os.getenv('API_KEY'),  # this is also the default, it can be omitted
 )
 
-def check_invalid_meeting():
-    import pyautogui
+# Setting logging
+logfile = "./logs/run.log"
+logger.add(logfile, format="{message}", level="INFO")
+
+class StreamToLogger:
+    def __init__(self, level="INFO"):
+        self.level = level
+
+    def write(self, message):
+        if message.rstrip() != "":
+            logger.opt(depth=1).log(self.level, message.rstrip())
+
+    def flush(self):
+        pass
+
+sys.stdout = StreamToLogger(level="INFO")
+
+def locate_and_click(image_path, confidence=0.8, wait=False):
+    """
+    Locates an image on the screen and clicks its center.
+
+    Args:
+        image_path (str): The path to the image to locate.
+        confidence (float): The confidence level for image recognition (default: 0.8).
+    """
     try:
-        pyautogui.locateCenterOnScreen("./img/invalid_meeting_id.png", confidence=0.8)
+        x, y = pyautogui.locateCenterOnScreen(image_path, confidence=confidence)
+        if wait:
+            time.sleep(random.uniform(1, 2))
+        pyautogui.click(x, y)
         return True
     except Exception as e:
         return False
+
+def check_invalid_meeting():
+    """
+    Checks if the invalid meeting image is displayed.
+
+    Returns:
+        bool: True if the invalid meeting image is found, False otherwise.
+    """
+    return locate_and_click("./img/invalid_meeting_id.png")
     
 def join_meeting(name):
-    import pyautogui
+    """
+    Attempts to join a Zoom meeting.
 
+    Args:
+        name (str): The name to use when joining the meeting.
+
+    Returns:
+        bool: True if the meeting was joined successfully, False otherwise.
+    """
     while True:
-        try:
-            # check if the user has been admitted
-            x, y = pyautogui.locateCenterOnScreen("./img/leave.png", confidence= 0.8)
+        if locate_and_click("./img/leave.png"):
             print("Admitted")
             break
-        except Exception as e:
-            # if exit join button, then click on it
-            try:
-                x, y = pyautogui.locateCenterOnScreen("./img/join.png", confidence= 0.8)
-                time.sleep(random.uniform(1,2))
-                pyautogui.click(x, y)
-            except Exception as e:
-                # check if has enter name field
-                try: 
-                    x, y = pyautogui.locateCenterOnScreen("./img/name_field_check.png", confidence= 0.8)
-                    # click on the name field
-                    pyautogui.click(x, y)
-                    time.sleep(random.uniform(1,2))
-                    pyautogui.write(name, interval=0.2)
 
-                    x, y = pyautogui.locateCenterOnScreen("./img/join.png", confidence= 0.8)
-                    time.sleep(random.uniform(1,2))
-                    pyautogui.click(x, y)
-                except Exception as e:
-                    if check_invalid_meeting():
-                        print("Invalid Meeting Link Provided")
-                        return 0
-                    else:
-                        pass
-            
-            time.sleep(0.3)
+        if locate_and_click("./img/join.png", wait=True):
+            continue
+
+        if (
+            locate_and_click("./img/name_field_check.png")
+            or locate_and_click("./img/name_field_check_1.png")
+            or locate_and_click("./img/name_field_check_2.png")
+        ):
+            time.sleep(random.uniform(1, 2))
+            pyautogui.write(name, interval=0.2)
+            locate_and_click("./img/join.png", wait=True)
+            continue
+
+        if check_invalid_meeting():
+            print("Invalid Meeting Link Provided")
+            return False
+
+        time.sleep(0.3)
             
     print("Joined the meeting, Recording now...")
 
     return True
         
 def record_audio(filename):
+    """
+    Records audio from the ZoomRec monitor using ffmpeg.
+
+    Args:
+        filename (str): The filename to save the recording as.
+    """
     proc = subprocess.Popen(
         [
             "ffmpeg",
@@ -89,18 +131,27 @@ def record_audio(filename):
     proc.wait()
 
 def check_meeting_ended():
-    import pyautogui
+    """
+    Checks if the meeting has ended by looking for the end.png image.
+    """
     while True:
-        try:
-            pyautogui.locateCenterOnScreen("./img/end.png", confidence=0.8)
+        if locate_and_click("./img/end.png"):
             return True
-        except Exception as e:
-            time.sleep(1)
+        time.sleep(1)
 
 def record_meeting(name, description):
+    """
+    Records a Zoom meeting.
+
+    Args:
+        name (str): The name to use when joining the meeting.
+        description (str): The description of the meeting.
+
+    Returns:
+        str: The audio name if the meeting was joined successfully, 0 otherwise.
+    """
     is_joined = join_meeting(name)
     if is_joined:
-        # audio_name = f"{description if description else 'zoom'}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         audio_name = "zoom_recording"
         with ThreadPoolExecutor() as executor:
             executor.submit(record_audio, f"{audio_name}.mp3")
@@ -109,6 +160,12 @@ def record_meeting(name, description):
         return 0
     
 def transcribe_meeting(audio_name):
+    """
+    Transcribes a Zoom meeting audio file using OpenAI's Whisper API.
+
+    Args:
+        audio_name (str): The name of the audio file to transcribe.
+    """
     while True:
         if os.path.exists(f"/home/zoomrec/recordings/{audio_name}.mp3"):
             print(f'File {audio_name}.mp3 has been found!')
@@ -138,31 +195,9 @@ def transcribe_meeting(audio_name):
             print(f'Waiting for the file {audio_name}.mp3...')
             time.sleep(1)  # Wait for 1 second and check again
 
-# Setting logging
-from loguru import logger
-import sys
-
-logfile = "./logs/run.log"
-logger.add(logfile, format="{message}", level="INFO")
-
-class StreamToLogger:
-    def __init__(self, level="INFO"):
-        self.level = level
-
-    def write(self, message):
-        if message.rstrip() != "":
-            logger.opt(depth=1).log(self.level, message.rstrip())
-
-    def flush(self):
-        pass
-
-sys.stdout = StreamToLogger(level="INFO")
-
 
 if __name__ == "__main__":
     print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-    import os
 
     os.environ["PULSE_SINK"] = "ZoomRec"
 
@@ -171,8 +206,6 @@ if __name__ == "__main__":
 
     if not os.path.exists("/home/zoomrec/logs"):
         os.mkdir("/home/zoomrec/logs")
-
-    import argparse
 
     parser = argparse.ArgumentParser(
         description="Script to receive command line parameters"
