@@ -6,11 +6,8 @@ from openai import OpenAI
 from pydub import AudioSegment
 from dotenv import load_dotenv
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
-import pyautogui
-from loguru import logger
-import sys
-import argparse
 
 load_dotenv()
 
@@ -18,23 +15,23 @@ client = OpenAI(
   api_key=os.getenv('API_KEY'),  # this is also the default, it can be omitted
 )
 
-# Setting logging
-logfile = "./logs/run.log"
-logger.add(logfile, format="{message}", level="INFO")
 
-class StreamToLogger:
-    def __init__(self, level="INFO"):
-        self.level = level
+    
+def locate(image_path, confidence=0.8):
+    """
+    Locates an image on the screen.
 
-    def write(self, message):
-        if message.rstrip() != "":
-            logger.opt(depth=1).log(self.level, message.rstrip())
-
-    def flush(self):
-        pass
-
-sys.stdout = StreamToLogger(level="INFO")
-
+    Args:
+        image_path (str): The path to the image to locate.
+        confidence (float): The confidence level for image recognition (default: 0.8).
+    """
+    import pyautogui
+    try:
+        x, y = pyautogui.locateCenterOnScreen(image_path, confidence=confidence)
+        return True, x, y
+    except Exception as e:
+        return False, 0, 0
+    
 def locate_and_click(image_path, confidence=0.8, wait=False):
     """
     Locates an image on the screen and clicks its center.
@@ -43,6 +40,7 @@ def locate_and_click(image_path, confidence=0.8, wait=False):
         image_path (str): The path to the image to locate.
         confidence (float): The confidence level for image recognition (default: 0.8).
     """
+    import pyautogui
     try:
         x, y = pyautogui.locateCenterOnScreen(image_path, confidence=confidence)
         if wait:
@@ -51,32 +49,16 @@ def locate_and_click(image_path, confidence=0.8, wait=False):
         return True
     except Exception as e:
         return False
-
-def check_invalid_meeting():
-    """
-    Checks if the invalid meeting image is displayed.
-
-    Returns:
-        bool: True if the invalid meeting image is found, False otherwise.
-    """
-    return locate_and_click("./img/invalid_meeting_id.png")
     
 def join_meeting(name):
-    """
-    Attempts to join a Zoom meeting.
-
-    Args:
-        name (str): The name to use when joining the meeting.
-
-    Returns:
-        bool: True if the meeting was joined successfully, False otherwise.
-    """
+    import pyautogui
     while True:
         if locate_and_click("./img/leave.png"):
             print("Admitted")
             break
 
         if locate_and_click("./img/join.png", wait=True):
+            print("Clicked on Join")
             continue
 
         if (
@@ -84,6 +66,7 @@ def join_meeting(name):
             or locate_and_click("./img/name_field_check_1.png")
             or locate_and_click("./img/name_field_check_2.png")
         ):
+            print("Clicked on Name Field")
             time.sleep(random.uniform(1, 2))
             pyautogui.write(name, interval=0.2)
             locate_and_click("./img/join.png", wait=True)
@@ -98,14 +81,11 @@ def join_meeting(name):
     print("Joined the meeting, Recording now...")
 
     return True
-        
-def record_audio(filename):
-    """
-    Records audio from the ZoomRec monitor using ffmpeg.
 
-    Args:
-        filename (str): The filename to save the recording as.
-    """
+def check_invalid_meeting():
+    return locate_and_click("./img/invalid_meeting_id.png")
+    
+def record_audio(filename):
     proc = subprocess.Popen(
         [
             "ffmpeg",
@@ -131,27 +111,18 @@ def record_audio(filename):
     proc.wait()
 
 def check_meeting_ended():
-    """
-    Checks if the meeting has ended by looking for the end.png image.
-    """
+    import pyautogui
     while True:
-        if locate_and_click("./img/end.png"):
+        try:
+            pyautogui.locateCenterOnScreen("./img/end.png", confidence=0.8)
             return True
-        time.sleep(1)
+        except Exception as e:
+            time.sleep(1)
 
 def record_meeting(name, description):
-    """
-    Records a Zoom meeting.
-
-    Args:
-        name (str): The name to use when joining the meeting.
-        description (str): The description of the meeting.
-
-    Returns:
-        str: The audio name if the meeting was joined successfully, 0 otherwise.
-    """
     is_joined = join_meeting(name)
     if is_joined:
+        # audio_name = f"{description if description else 'zoom'}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         audio_name = "zoom_recording"
         with ThreadPoolExecutor() as executor:
             executor.submit(record_audio, f"{audio_name}.mp3")
@@ -160,12 +131,6 @@ def record_meeting(name, description):
         return 0
     
 def transcribe_meeting(audio_name):
-    """
-    Transcribes a Zoom meeting audio file using OpenAI's Whisper API.
-
-    Args:
-        audio_name (str): The name of the audio file to transcribe.
-    """
     while True:
         if os.path.exists(f"/home/zoomrec/recordings/{audio_name}.mp3"):
             print(f'File {audio_name}.mp3 has been found!')
@@ -195,9 +160,31 @@ def transcribe_meeting(audio_name):
             print(f'Waiting for the file {audio_name}.mp3...')
             time.sleep(1)  # Wait for 1 second and check again
 
+# Setting logging
+from loguru import logger
+import sys
+
+logfile = "./logs/run.log"
+logger.add(logfile, format="{message}", level="INFO")
+
+class StreamToLogger:
+    def __init__(self, level="INFO"):
+        self.level = level
+
+    def write(self, message):
+        if message.rstrip() != "":
+            logger.opt(depth=1).log(self.level, message.rstrip())
+
+    def flush(self):
+        pass
+
+sys.stdout = StreamToLogger(level="INFO")
+
 
 if __name__ == "__main__":
     print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    import os
 
     os.environ["PULSE_SINK"] = "ZoomRec"
 
@@ -206,6 +193,8 @@ if __name__ == "__main__":
 
     if not os.path.exists("/home/zoomrec/logs"):
         os.mkdir("/home/zoomrec/logs")
+
+    import argparse
 
     parser = argparse.ArgumentParser(
         description="Script to receive command line parameters"
