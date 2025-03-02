@@ -14,6 +14,7 @@ load_dotenv()
 client = OpenAI(
   api_key=os.getenv('API_KEY'),  # this is also the default, it can be omitted
 )
+ended = False
 
 
     
@@ -109,14 +110,23 @@ def record_audio(filename):
 
     proc.terminate()
     proc.wait()
+    
+    print("Recording Ended")
 
 def check_meeting_ended():
+    global ended
     import pyautogui
     while True:
+        if ended:
+            print("Meeting Ended")
+            break
         try:
             pyautogui.locateCenterOnScreen("./img/end.png", confidence=0.8)
+            ended = True
+            print("Meeting Ended")
             return True
         except Exception as e:
+            print("Meeting is still in progress")
             time.sleep(1)
 
 def record_meeting(name, description):
@@ -207,6 +217,9 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--description", type=str, help="Description")
 
     args = parser.parse_args()
+    
+    # kill the zoom process if it is running
+    os.system("pkill zoom")
 
     if args.url:
         url = args.url
@@ -227,7 +240,7 @@ if __name__ == "__main__":
     time.sleep(random.uniform(3, 5))
 
     audio_name = record_meeting(name, description)
-    if audio_name != 0:
-        with ThreadPoolExecutor() as executor:
-            executor.submit(transcribe_meeting, audio_name)
-    print(audio_name)
+    # if audio_name != 0:
+    #     with ThreadPoolExecutor() as executor:
+    #         executor.submit(transcribe_meeting, audio_name)
+    # print(audio_name)
