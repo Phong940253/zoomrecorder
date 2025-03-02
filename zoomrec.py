@@ -100,7 +100,8 @@ def check_meeting_ended():
 def record_meeting(name, description):
     is_joined = join_meeting(name)
     if is_joined:
-        audio_name = f"{description if description else 'zoom'}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        # audio_name = f"{description if description else 'zoom'}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        audio_name = "zoom_recording"
         with ThreadPoolExecutor() as executor:
             executor.submit(record_audio, f"{audio_name}.mp3")
         return audio_name
