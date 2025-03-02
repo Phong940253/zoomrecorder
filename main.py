@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 import subprocess
 import os
 import time
@@ -117,3 +117,15 @@ async def check_meeting_status():
             return {"message": "Meeting has ended"}
     else:
         return {"message": "No recording in progress"}
+
+@app.get("/get-recording")
+async def get_recording():
+    filename = "zoom_recording.mp3"
+    try:
+        recordings_dir = "/home/zoomrec/recordings"
+        file_path = os.path.join(recordings_dir, filename)
+        with open(file_path, "rb") as file:
+            content = file.read()
+        return Response(content, media_type="audio/mpeg")
+    except Exception as e:
+        return {"error": str(e)}
